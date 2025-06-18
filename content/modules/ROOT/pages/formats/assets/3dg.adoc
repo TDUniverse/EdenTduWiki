@@ -1,0 +1,10 @@
+= 3DG Scene Geometry (.3dg files)
+:author: MeFisto94
+:revnumber: 1.0
+:revdate: 2025/06/18
+
+NOTE: This article is currently a STUB. Please help contribute information to
+it.
+
+TIP: This file is based on the xref:formats/assets/segments.adoc[Segments]
+format

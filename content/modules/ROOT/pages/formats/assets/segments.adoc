@@ -1,0 +1,12 @@
+= The Segment File Structure of Assets
+:author: MeFisto94
+:revnumber: 1.0
+:revdate: 2025/06/18
+
+NOTE: This article is currently a STUB. Please help contribute information to
+it.
+
+Many asset formats (not all, interestingly!) follow the same syntactical
+structure to group their data into chunks or segments. Thus, they can be parsed
+with a generic parser where one only needs to provide implementations for the
+respective segments.

@@ -1,0 +1,10 @@
+= The INI Configs (.ini and *some* .cpr files)
+:author: MeFisto94
+:revnumber: 1.0
+:revdate: 2025/06/18
+
+NOTE: This article is currently a STUB. Please help contribute information to
+it.
+
+NOTE: Despite the name, those files are not regular valid INI files, most
+notably, they lack the `=` sign and rather consist of grouped command lists.

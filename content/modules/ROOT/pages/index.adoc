@@ -1,0 +1,12 @@
+= Eden Games Era TDU Wiki Overview
+:author: MeFisto94
+:revnumber: 1.0
+:revdate: 2025/06/19
+
+== Scope
+The Scope of this Wiki is to collect information mostly valueable to modders/
+mod developers for the games "Test Drive Unlimited" and 
+"Test Drive Unlimited 2".
+
+It will consist mostly of information surrounding the file formats used by
+the game

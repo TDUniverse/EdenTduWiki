@@ -1,0 +1,13 @@
+* File Formats
+** Archive File Formats
+*** xref:formats/archive/bnk.adoc[BNK Bank Archive]
+*** xref:formats/archive/big.adoc[BIG (and .map) Archives]
+** Asset File Formats:
+*** 3D Objects
+**** xref:formats/assets/3dd.adoc[3DD Scene Hierarchy]
+**** xref:formats/assets/3dg.adoc[3DG Scene Geometry]
+**** xref:formats/assets/2dm.adoc[2DM Materials]
+**** xref:formats/assets/pmi.adoc[PMI (Mass Instance grouP)]
+** Database/Config File Formats:
+*** xref:formats/database/ini.adoc[Custom INI Files]
+*** xref:formats/database/xmb.adoc[XMB Database]

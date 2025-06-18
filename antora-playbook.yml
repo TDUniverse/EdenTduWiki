@@ -1,0 +1,15 @@
+site:
+  title: Eden Games Era TDU Wiki
+  start_page: content::index.adoc
+content:
+  sources:
+  - url: .
+    branches: HEAD
+    start_path: content
+ui:
+  bundle:
+    url: https://gitlab.com/antora/antora-ui-default/-/jobs/artifacts/HEAD/raw/build/ui-bundle.zip?job=bundle-stable
+    snapshot: true
+  supplemental_files: ./supplemental-ui
+runtime:
+  fetch: true

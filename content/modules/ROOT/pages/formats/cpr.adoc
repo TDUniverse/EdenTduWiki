@@ -1,0 +1,11 @@
+= The encrypted files (.cpr files)
+:author: MeFisto94
+:revnumber: 1.0
+:revdate: 2025/06/18
+
+NOTE: This article is currently a STUB. Please help contribute information to
+it.
+
+NOTE: Just by the file extension, one cannot determine the useage of the file,
+as CPR is just any given file (usually xref:formats/database/xmb.adoc[xmb] or
+ xref:formats/database/ini.adoc[ini])

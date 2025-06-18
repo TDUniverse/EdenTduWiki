@@ -1,0 +1,7 @@
+= The Database Format (_Xml Binary_) (.xmb, .map files and savegames)
+:author: MeFisto94
+:revnumber: 1.0
+:revdate: 2025/06/18
+
+NOTE: This article is currently a STUB. Please help contribute information to
+it.
