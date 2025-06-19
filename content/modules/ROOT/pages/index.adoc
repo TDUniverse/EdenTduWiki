@@ -9,4 +9,6 @@ mod developers for the games "Test Drive Unlimited" and
 "Test Drive Unlimited 2".
 
 It will consist mostly of information surrounding the file formats used by
-the game
+the game.
+Due to the nature of the source of this information being based on guesses,
+take every statement with a grain of salt and correct it, if necessary.

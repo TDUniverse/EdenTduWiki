@@ -6,5 +6,125 @@
 NOTE: This article is currently a STUB. Please help contribute information to
 it.
 
-NOTE: Despite the name, those files are not regular valid INI files, most
-notably, they lack the `=` sign and rather consist of grouped command lists.
+== The Format
+Despite the name, those files are not regular valid INI files, they are
+rather an extension to ini, taking creative freedom.
+
+=== An Exempt (GamePC.ini, TDU1)
+```ini
+[Router]
+SetProtocolVersion= "PC Beta - 2.41A"
+SetFreerideVersion= "PC Beta - 2.41A"
+
+SetResPath  = "EURO/BNK/"
+SetDVDPath  = "DVDEURO/"
+SearchInBootFirst= FALSE
+SetCurGameMode = 0
+
+
+UnlockAllRoadsFALSE
+
+
+AddLevel= "Hawai"
+
+TUTORIAL= OFF
+SCENARIOTUTORIAL= OFF
+
+
+DEFAULTSTARTPOSITION0 0 0
+
+REMOVESPOTFROMMAP"ECH_C"
+REMOVESPOTFROMMAP"ECW_A_F"
+REMOVESPOTFROMMAP"ECH_C_N"
+REMOVESPOTFROMMAP"EDI_A_N"
+
+END
+```
+
+NOTE: This exempt has been shortened (the file is much larger and there are 
+many more useless blank lines footnote:[to clarify if that is true for versions
+other than MC 1.66A])
+
+=== Observations
+- It seems that whitespaces only _rarely_ matter, namely to separate 
+arguments
+- The file has ini-like `[Categories]`
+- There are Assignment style statements `=` footnote:[It is questionable if
+this isn't just disregarded by the parser, as here, AddLevel uses `=`, but
+iirc in TDU2 the same command doesn't use them. It's also illogical if one
+looks at UnlockAllRoads that could've also used an assignment.]
+- There are Method Invocation style statements with space separated arguments
+- The file ends with "END"
+- There may not be boolean literals as OFF and FALSE are used seemingly
+interchangeably?
+
+== The Game
+Where and how those files are located depends on the actual game series.
+
+Both games will accept override versions of those inis via command line
+arguments. To supply a different `GamePC.ini`, for instance, launch the
+game with `-game X:\MyGamePC.ini` and it will use it. 
+footnote:[TDU2 Release Builds seem to only accept CPR (i.e. xtea 
+encrypted) files]
+
+=== File loading in TDU1
+In TDU1, the ini files are stored inside the executable and being XOR encrypted
+with themselves. To unpack them, consider the following snippet:
+```csharp
+public static byte[] DumpIni(IntPtr address, int size)
+{
+    var res = new byte[size];
+    Marshal.Copy(address, res, 0, res.Length);
+    byte bVar1 = 0;
+    
+    for (var i = 0; i < res.Length; i++)
+    {
+        res[i] = bVar1 ^= res[i];
+    }
+    return res;
+}
+```
+
+In MC 1.66A, the most important inis are at:
+```
+{ EIniFile.GamePc, new IniFileDescriptor { Address = new IntPtr(0xf9c7b8), Size = 0x14AB }},
+{ EIniFile.SystemPc, new IniFileDescriptor { Address = new IntPtr(0xf9c460), Size = 0x357 }},
+{ EIniFile.Physics, new IniFileDescriptor { Address = new IntPtr(0xfa0820), Size = 0xDFE } }
+```
+
+=== File loading in TDU2
+In TDU2, the ini files are stored in the root folder of the game, but are 
+xtea-encrypted and carry the xref:formats/cpr.adoc[.cpr] file
+extension.
+
+=== File parsing in both games
+The way parsing seems to work is that a line is read until the first
+whitespace, in order to determine the "command" (e.g. AddLevel), then the
+remaining line is passed onto the dedicated handler for that command.
+
+There is a big static block where all commands are registered with dedicated
+handling functions, so there isn't context-sensitive logic or anything, so one
+could trivially add new commands to the config files by registering a handler
+in-time. The value of this is however limited by the fact that for both games,
+the file is encrypted in a way, so config editing isn't the most convenient
+user facing interaction.
+
+== Valid Commands
+NOTE: The following list is in no way complete
+
+=== GamePC.ini
+[cols="6,10,1,1"]
+|===
+|Command|Description|TDU1|TDU2
+
+| SetResPath
+| Specify the base path for loading assets from the *hard drive*
+| ✓
+| ✓
+
+| SetDVDPath
+| Specify the base path for loading assets from the *optical drive*
+| ✓
+| ✓
+
+|===
