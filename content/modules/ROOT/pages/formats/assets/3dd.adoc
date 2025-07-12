@@ -1,10 +1,109 @@
-= 3DG Scene Hierarchy (.3dd files)
+= 3D Scene Hierarchy (.3dd files)
 :author: MeFisto94
 :revnumber: 1.0
-:revdate: 2025/06/18
+:revdate: 2025/07/12
 
 NOTE: This article is currently a STUB. Please help contribute information to
 it.
 
 TIP: This file is based on the xref:formats/assets/segments.adoc[Segments]
 format
+
+The purpose of this file format is to serialize the hierarchy (scene graph) of
+3d models and referencing raw geometry data in 3dg files. Thus it most notably
+does not contain geometry data and one always additionally needs a 3dg file
+for that.
+
+== Segments
+=== Hierarchy Segment
+The hierarchy segment is the outermost segment, the one that needs to be
+inspected first. It is wrapped in a `HIEA` parent segment and the children
+are `HIE.`.
+
+```csharp
+struct HierarchySegment {
+    uint Zero;
+    // The offset (pointer) to the instance segment
+    uint OffsetInstance;
+    // "number in branch", whatever that means.
+    ushort NumInBranch;
+    ushort Unk1;
+    // The offset (pointer) to the parent hierarchy segment
+    uint OffsetParent;
+}
+```
+
+In order to build a scene hierarchy, one needs to evaluate the `OffsetParent`.
+Hierarchy segments aren't deeply nested in the file structure, instead they are
+all siblings in the `HIEA` segment. Thus, `OffsetParent` has to be compared to
+the Position of each segment, where `OffsetParent = 0` denotes the root node.
+
+When the hierarchy is done, hierarchy segments can be linked to instance
+segments by using `OffsetInstance` in a similar way.
+
+=== Instance Segment
+```csharp
+struct InstanceSegment {
+    struct LOD
+    {
+        uint OffsetObj;
+        // Range *within* the LoD is displayed. 0.0 => always
+        float Range;
+        uint Zeroes1;
+        uint Zeroes2;
+        uint Zeroes3;
+    }
+
+    byte[] Matrix; // 64 Bytes
+
+    uint Zero1;
+    uint OffsetMBNK;
+    int Type; // 0 == dummy node, otherwise -1 (?)
+    ushort Unk1;
+    ushort NbOfLods;
+    LOD[] Lods;
+}
+```
+
+An instance of a geometry has a transform (`Matrix`), a type (dummy nodes don't have
+geometry, they are purely for the transform hierarchy), an offset into the MBNK
+segment (material reference) and a hardcoded 4 level of detail layers (size-wise,
+but `NbOfLods` determines how many of the array elements are filled).
+
+The Level of Detail has both, a `Range` footnote:[Clarify if `>=` or `<=`] and 
+an offset at which to find Object Segments that represent the relevant geomtry
+for the level of detail.
+
+Do note, that the offset does not directly point to the object segment but instead
+point into an entry of the xref:formats/assets/segments.adoc[Hash Segment] that is
+a child of `OBJA`. The same hash name can be used for the hash segment in the 
+`GEOA` segment in the 3dg file.
+
+=== Object Segment
+```csharp
+struct ObjectSegment {
+    uint Zero1;
+    uint Zero2;
+    uint Zero3;
+    uint NbOfMaterials;
+    float BoundX;
+    float BoundY;
+    float BoundZ;
+    float BoundRadians;
+}
+```
+
+The object segment mainly consits of a number of materials and a bounding box.
+footnote:[Clarify, what the radians bound means]
+
+=== Material Bank Segment
+```csharp
+struct MBnkSegment {
+    struct MBnkEntry {
+        String8 Name;
+        ulong Unk; // an offset?
+    }
+
+    MBnkEntry[] Entries;
+}
+```

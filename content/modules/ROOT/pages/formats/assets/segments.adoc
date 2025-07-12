@@ -10,3 +10,107 @@ Many asset formats (not all, interestingly!) follow the same syntactical
 structure to group their data into chunks or segments. Thus, they can be parsed
 with a generic parser where one only needs to provide implementations for the
 respective segments.
+
+== The File Header
+
+```csharp
+struct FileHeader {
+    // typically 2
+    ushort FileVersion;
+    // For some file types 0, for others some flags like 0x400
+    ushort SomeFlag;
+    // zero?
+    uint Unk1;
+    uint FileSize;
+    // ".3DD", ".3DG" etc.
+    uint Magic;
+}
+```
+
+The file header for every segment-based asset is the same and since the file
+type is even outlined in `FileHeader#Magic`, you can use a generic parser
+and evaluate that field for custom segment handlers (see below).
+
+Currently we don't know much about those values specifically, but there also
+wasn't the need to do so, so far. It is not known how reliable the `FileVersion` is.
+
+== The Segment Structure
+```csharp
+struct FileSegmentHeader {
+    // The FourCC ASCII type, typically an abbreviation for the type.
+    uint MagicType;
+    // Seems to be 0. Note: Isn't true for every file.
+    uint Zero;
+    // The size in bytes of this segment (payload + 0x10 header)
+    uint Size;
+    // Relative to the start of _this_
+    uint NextSegmentPtr;
+}
+```
+Right after the File Header, there's the Segment Header of the first segment.
+
+When the game parses files, it will read the first segment header and then
+follow the `NextSegmentPtr`. Alternative implementations, such as the generic
+reader/writer in TDUFileFormats is operating in a recursive way, that means
+storing the payload of a segment `[0..Size]` and then expecting the next
+segment to be placed after that, because there are only two reasonable values
+for `NextSegmentPtr`: `Size` or `0x10` (when a segment has children)
+footnote:[_some_ segments (e.g. `MOBA`) have both: a payload *and* children,
+so `NextSegmentPtr` isn't exactly `0x10`.] and then recursively parse the
+segments that are contained within the stored payload of the current segment.
+
+After the SegmentHeader, there's the content of the segment, which can either
+be arbitrary data, a segment header of the child-segment or both. How to
+interpret the arbitrary data depends on the `FileSegmentHeader#MagicType`
+and can't be solved generically. Instead, visit the relevant sub-page in
+this wiki to find out more..
+
+=== Segment Magic Naming Scheme
+The Segment Magic Types are FourCCs, that means it's a `uint` that consists
+of 4 ASCII characters.
+
+The Naming Scheme for segments follows a pattern that is easily recognizable:
+
+* All segments use all four characters. Unused characters are padded with `.`
+* Segments that contain children are called "array of xyz" and thus end with A:
+** That means, we'd have `FOO.` as child segments and `FOOA` as parent of those.
+** Do note that arrays may also contain dedicated data, but this is rare.
+* One can relatively easily reason about what the segment is supposed to be,
+e.g. `GEOM` (`GEOA`) for the Geometries in 3dg files or `PRIM` for the primitives.
+
+== Hash Segment
+
+```csharp
+struct HashSegment {
+    struct Link {
+        String8 Name;
+        uint Offset;
+        uint Zero;
+    }
+    Link[] Links;
+}
+```
+
+The hash segment is a segment that is used in multiple files and segments in general.
+The hash segment is a child in different segments. It is basically a hash table to 
+lookup segment positions by their name (in String8 format).
+
+TODO: Clarify the order of the Links, maybe they are sorted by their String8.
+
+If there is a hash segment, there has to be a `REAL` segment as well next to it.
+
+=== REAL Segment (Relocation)
+The purpose of the Real Segment isn't entirely clear yet, but it seems to be used
+by the game to have precise in-memory pointers instead of relative file offsets.
+
+```csharp
+struct RealSegment {
+    uint[] Offsets;
+}
+```
+
+The entries correspond to the hash segment links, sorted by `Link#Offset`.
+The uint then is the file offset to exactly `Link#Offset`.
+
+The segment then seems to have some padding, so that the number of Offsets is
+actually dividable by 8. Padding is done by appending `0` as Offset.

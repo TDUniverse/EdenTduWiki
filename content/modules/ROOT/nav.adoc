@@ -4,6 +4,7 @@
 *** xref:formats/archive/big.adoc[BIG (and .map) Archives]
 ** Asset File Formats:
 *** 3D Objects
+**** xref:formats/assets/segments.adoc[Segments General]
 **** xref:formats/assets/3dd.adoc[3DD Scene Hierarchy]
 **** xref:formats/assets/3dg.adoc[3DG Scene Geometry]
 **** xref:formats/assets/2dm.adoc[2DM Materials]
