@@ -1,10 +1,286 @@
 = 3DG Scene Geometry (.3dg files)
 :author: MeFisto94
 :revnumber: 1.0
-:revdate: 2025/06/18
+:revdate: 2025/07/12
 
 NOTE: This article is currently a STUB. Please help contribute information to
 it.
 
 TIP: This file is based on the xref:formats/assets/segments.adoc[Segments]
 format
+
+The purpose of this file format is to store the raw geometry data that is 
+referenced by the xref:formats/assets/3dd.adoc[3dd files].
+
+NOTE: This file format has some differences between TDU1 and TDU2, most notably
+every segment varies slightly.
+
+== Segments
+=== Geometry Segment (GEOM)
+The segment to start interpreting with is the Geometry Segment. Geometry
+segments are stored as `GEOM` as children of `GEOA` and are themselves
+empty containers of `PRIM` segments (i.e. `GEOM` could also be called
+`PRIA`).
+That is, because every world geometry can consist of multiple meshes
+("primtives"), that share the same materials.
+
+Finding the right `GEOM` segment is done by looking it up in the
+xref:formats/assets/segments.adoc[hash segment] (`HASH`), that is also a child
+in `GEOA`. The hash entry is referenced by the 3dd file.
+
+=== Primitive Segment (PRIM)
+==== TDU2
+```csharp
+struct PrimitiveSegmentTdu2 {
+    uint OffsetIndex; // Offset into the DXIB segment (index buffer)
+    uint OffsetVertex; // Offset into DXVB segment (vertex buffer)
+    uint OffsetBone; // Offset into the bone buffer (TBD)
+    uint OffsetUnk;
+    ushort Unk2;
+    ushort MaterialId; // Index into the MBNK segment (3dd) to reference materials
+    uint Unk3;
+    uint Unk4;
+    uint nVerts;
+    uint Unk5;
+    uint Unk6;
+    uint nIndices;
+    uint Zero1;
+    uint Zero2;
+    uint Zero3;
+    ushort BoundRadius;
+    short BoundX;
+    short BoundY;
+    short BoundZ;
+}
+```
+
+==== TDU1
+```csharp
+enum VertexStreamInfoType : byte
+{
+    Position = 0,
+    Color = 2,
+    Normal = 9,
+    Binormal = 9,
+    Uv = 12,
+    HMap = 15,
+    BoneIndex = 0x11,
+    BoneWeight = 0x14,
+    Tangent = 0x16
+}
+
+class VertexStreamInfo
+{
+    VertexStreamInfoType TypeId;
+    byte NbEntries;
+    int Offset;
+    
+    static VertexStreamInfo Read(uint value)
+    {
+        return new VertexStreamInfo
+        {
+            NbEntries = (byte)(value & 0xFF),
+            TypeId = (VertexStreamInfoType)((value & 0x0000FF00) >> 8)
+        };
+    }
+
+    uint Write()
+    {
+        return (uint)((NbEntries << 24) | ((byte)TypeId << 16));
+    }
+}
+
+struct PrimitiveSegmentTdu1 {
+    uint Zero;
+    uint UnkId; // 4 or 7.
+    uint OffsetIndexBuffer;
+    uint OffsetVertexBuffer;
+    uint OffsetBoneBuffer;
+    uint Zero2;
+    ushort Unk1;
+    ushort MaterialId;
+    ushort Unk2;
+    ushort Padding;
+    uint Zero3;
+    uint NbVerts;
+    uint VertexStart;
+    uint NbIndices;
+
+    VertexStreamInfo InfoPosition;
+    VertexStreamInfo InfoNormal;
+    VertexStreamInfo InfoColor;
+    VertexStreamInfo InfoZero;
+    VertexStreamInfo InfoUv;
+    VertexStreamInfo InfoTangent;
+    VertexStreamInfo InfoBinormal;
+    VertexStreamInfo InfoBoneIndices;
+    VertexStreamInfo InfoBoneWeight;
+    byte[] Zero4; // 40 Bytes
+}
+```
+
+NOTE: The difference between TDU1 and TDU2 is that with TDU2 we get those 
+pointers into `DXVB` and `DXIB` segments, but with TDU1 TODO
+
+NOTE: The actual index buffers may be larger than `NbIndices` elements, that value
+is just because some primitives may share an index buffer and don't use all the
+tris (e.g. in LoD scenarios).
+
+=== Index Buffer Segment (DXIB)
+NOTE: It is worth noting that both games make heavy use of stripped triangles for the
+index buffer. This is to save bandwidth and VRAM usage. Common tools won't
+support stripped index buffers so one needs to convert them to regular index
+buffers and re-strip them when converting back into the game.
+
+==== TDU2
+```csharp
+struct IndexBufferSegmentTdu2 {
+    uint nbIndices;
+    uint nType; // 1 == TRI_STRIP
+    ulong Padding;
+    ushort[] Indices;
+
+    // It seems the game has some "random" padding data (maybe uncleared ram pages??).
+    // In order to pass the unit tests, we store and re-serialize them, but it seems the game happily
+    // accepts zeroes, which is what would happen if the index buffer was resized.
+    byte[] IndexPadding;
+}
+```
+
+==== TDU1
+The TDU1 buffers (both index and vertex) have some very weird padding ("GUN TIME").
+The relevance of it is unknown, so for now we just keep it. Since it's padding
+at the beginning and always 64 bytes, we just skip the first 64 bytes of it.
+
+```csharp
+struct IndexBufferSegmentTdu1 {
+    byte[] Padding; // 64 Bytes
+    ushort[] Indices;
+}
+```
+
+The TDU1 index buffer is not self descriptive as information such as the
+nbIndices is derived from the fact that the segment contains nothing but indices.
+
+=== Vertex Buffer Segment (DXVB)
+==== TDU2
+```csharp
+struct VertexBufferSegmentTdu2 {
+    uint nVerts;
+    ushort Positions;
+    ushort Normals;
+    ushort Color;
+    ushort Zero1;
+    ushort UV;
+    ushort Tangent;
+    ushort BiNormal;
+    ushort BoneIndices;
+    ushort BoneWeights;
+    uint Zero2;
+    ushort Zero3;
+    // Whether the Uvs are in float (0x*040) or main buffer (0x0*40)
+    ushort UVLoc;
+    ushort Zero4;
+        
+    // It seems the game has some "random" padding data (maybe uncleared ram pages??).
+    // In order to pass the unit tests, we store and re-serialize them, but it seems the game happily
+    // accepts zeroes, which is what would happen if the vertex buffer was resized.
+    byte[] IndexPadding;
+}
+```
+
+We're interested in the lower byte of the ushorts to check for the presence of
+specific vertex streams in the buffer, e.g.: `bool HasNormals => (Normals & 0xFF) != 0;`
+From that information, we can construct a stride (i.e. the size in bytes of one vertex)
+and then read them in-order as they are listed in the struct.
+
+Also there are two buffers: The float buffer that always contains the position,
+optionally the UV layers and potentially also Bone indices and weights, though
+animation hasn't been entirely uncovered yet.
+
+Then, there's the "main" buffer, that contains everything else. Color is a `uint`,
+UVs are two floats (regardless of the fact that they are *not* in the float buffer),
+and normals, tangents and binormals are encoded as a "half 3 vector", where the
+three components are stored as `ushort` each (but is actually a 16bit float).
+
+==== TDU1
+The TDU1 buffers (both index and vertex) have some very weird padding ("GUN TIME").
+The relevance of it is unknown, so for now we just keep it. Since it's padding
+at the beginning and always 64 bytes, we just skip the first 64 bytes of it.
+
+WARNING: Pitfall. We only have GUN TIME if `PrimitiveSegement#Unk1` is 4
+(regular mesh?), whereas the height map is 7 and doesn't have any padding,
+while also not containing 3 floats per vert but only one (height map).
+
+```csharp
+struct VertexBufferSegmentTdu1 {
+    byte[] Padding; // 64 Bytes
+    float[] Buffer;
+}
+```
+
+The TDU1 vertex buffer is not self descriptive as information such as the
+presence of streams is derived from the primitive segment's `VertexStreamInfo`.
+Also, the buffer isn't interleaved as it is for TDU2 but each vertex stream
+is placed after each other and addressed by `VertexStreamInfo#Offset`.
+
+Normals are packed differently in TDU1, but besides that, the packing
+is identical (uint color, UVs as floats).
+
+```csharp
+static float[] UnpackNormal(uint input)
+{
+    var i1 = (int)(input & 0x3FFu);
+    var i2 = (int)((input & 0xFFC00u) >> 10);
+    var i3 = (int)((input & 0x3FF00000u) >> 20);
+
+    // 3FF has the tenth bit set, 1FF only has the first 9. This is kind of like 2s complement
+    if (i1 > 0x1FF)
+    {
+        i1 -= 0x3FF;
+    }
+
+    if (i2 > 0x1FF)
+    {
+        i2 -= 0x3FF;
+    }
+
+    if (i3 > 0x1FF)
+    {
+        i3 -= 0x3FF;
+    }
+
+    const float divisor = 0x1FF;
+    var x = i1 / divisor;
+    var y = i2 / divisor;
+    var z = i3 / divisor;
+    
+    // CAUTION: One should still normalize the vector using any vector math library.
+    return new float[] {x, y, z};
+}
+
+static uint PackNormal(float[] input)
+{
+    const float divisor = 0x1FF;
+    var i1 = (int)(input[0] * divisor);
+    var i2 = (int)(input[1] * divisor);
+    var i3 = (int)(input[2] * divisor);
+
+    if (i1 < 0)
+    {
+        i1 += 0x3FF;
+    }
+
+    if (i2 < 0)
+    {
+        i2 += 0x3FF;
+    }
+
+    if (i3 < 0)
+    {
+        i3 += 0x3FF;
+    }
+
+    return (uint)i3 << 20 | (uint)i2 << 10 | (uint)i1;
+}
+```
